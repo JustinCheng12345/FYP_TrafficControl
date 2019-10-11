@@ -21,12 +21,10 @@ class TrafficController:
         self.mega.flush()
 
         self.mqttClient = mqtt.Client(client_id="ctc")
-        # self.mqttClient.connect("192.168.4.1")
         self.mqttClient.connect("127.0.0.1")
         self.mqttClient.subscribe("Status")
         self.mqttClient.subscribe("User")
         self.mqttClient.on_message = self.on_message
-        # self.mqttClient.loop_start();
 
         self.blocks = [False]*18
         self.sensors = [False] * 36
@@ -39,13 +37,15 @@ class TrafficController:
     def extract(self):
         # to extract sensor data from the Arduino mega  
         self.mega.write(b"se00get\n")
-        newblocks = str(self.mega.readline()).split(",")
-        self.blocks = [new if not new else old for old, new in zip(self.blocks, newblocks)]
+        tempblocks = [False]*18
+        for trueblock in self.mega.readline().decode("utf-8").split(","):
+            tempblocks[int(trueblock)] = True
+        self.blocks = [new if not new else old for old, new in zip(self.blocks, tempblocks)]
         print(self.blocks)
         for car in self.cars:
             car.position = self.blocks.index(car.ID)
         #for index, block in enumerate(newblocks):
-         #   self.blocks[index] = self.blocks[index] if block is not False else False
+        #   self.blocks[index] = self.blocks[index] if block is not False else False
 
     def calculate(self):
         # to calculate the optimal path for each lift
@@ -99,7 +99,7 @@ class TrafficController:
         pass
 
     def maintenance(self):
-        self.mqttClient.loop(timeout=0.1);
+        self.mqttClient.loop(timeout=0.1)
 
     def routine(self):
         while True:
@@ -111,6 +111,7 @@ class TrafficController:
 
     def add_car(self, car_id, position):
         self.cars.append(LiftCar(car_id, position))
+        self.blocks[position] = car_id
 
     def on_message(self, client, userdata, message):
         print("%s %s" % (message.topic, message.payload))
