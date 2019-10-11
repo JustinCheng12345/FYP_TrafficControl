@@ -1,4 +1,4 @@
-import utility
+from utility import *
 
 class LiftCar:
     def __init__(self, car_id, position):
@@ -12,7 +12,7 @@ class LiftCar:
         self.time_multiplier = [1, 1] # multiplier for distance calculation for travel time and stop time
 
     def get_waiting_time(self, call_floor, target_floor):
-        distance_to_reach = utility.floor_to_block(self.position, call_floor)
+        distance_to_reach = distance_to_block(self.position, call_floor)
         # will need to reach opposite side if wrong direction
         # distance_to_target = abs(target_floor - call_floor) # Doesn't matter as same for all lifts
         return distance_to_reach*self.time_multiplier[0] + \
@@ -23,10 +23,10 @@ class LiftCar:
     def add_job(self, job, pickup=True):
         if pickup:
             self.pickupQueue.append(job)
-            self.pickupQueue.sort(key=lambda x: utility.distance_to_block(self.position, x[0]))
+            self.pickupQueue.sort(key=lambda x: distance_to_block(self.position, x[0]))
         else:
             self.dropOffQueue.append(job)
-            self.dropOffQueue.sort(key=lambda x: utility.distance_to_block(self.position, x))
+            self.dropOffQueue.sort(key=lambda x: distance_to_block(self.position, x))
 
     def reach_target(self):
-        return
+        return self.position == self.pickupQueue[0][0] or self.position == self.dropOffQueue[0]

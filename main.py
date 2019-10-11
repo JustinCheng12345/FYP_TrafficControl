@@ -51,23 +51,27 @@ class TrafficController:
         # to calculate the optimal path for each lift
         # apply user queue to job queue
         for u in self.userQueue:
+            print(u)
             time_queue = [t.get_waiting_time(u[0], u[1]) for t in self.cars]
             self.cars[time_queue.index(min(time_queue))].add_job(u)
+            self.userQueue.remove(u)
 
         for car in self.cars:
+            print(car.pickupQueue)
             # If it is possible to move to next floor
             next_block = self.blocks[(car.position+1) % 18]
-            if next_block is False:
-                self.blocks[(car.position+1) % 18] = car.ID
-            elif car.reach_target():
+            if car.reach_target():
                 car.status = 9
+            elif next_block is False:
+                self.blocks[(car.position+1) % 18] = car.ID
             else:
                 car.status = 0
 
             # Loading
             if car.status == 9:
+                car.addDrop()
                 if car.pickupQueue[0][0] == car.position:
-                    car.add_job(car.pickupQueue[0][1])
+                    car.add_job(car.pickupQueue[0][1], pickup= False)
                     car.pickupQueue.pop(0)
                 if car.dropoffQueue[0] == car.position:
                     car.pickupQueue.pop(0)
@@ -114,7 +118,10 @@ class TrafficController:
         self.blocks[position] = car_id
 
     def on_message(self, client, userdata, message):
-        print("%s %s" % (message.topic, message.payload))
+        # print("%s %s" % (message.topic, message.payload))
+        print(message)
+        if (message.topic == "User"):
+            self.userQueue.append([int(n) for n in message.payload.decode("utf-8").split(",")])
 
 
 def main():
