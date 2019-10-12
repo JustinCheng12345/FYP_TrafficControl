@@ -44,8 +44,6 @@ class TrafficController:
         print(self.blocks)
         for car in self.cars:
             car.position = self.blocks.index(car.ID)
-        #for index, block in enumerate(newblocks):
-        #   self.blocks[index] = self.blocks[index] if block is not False else False
 
     def calculate(self):
         # to calculate the optimal path for each lift
@@ -62,19 +60,15 @@ class TrafficController:
             next_block = self.blocks[(car.position+1) % 18]
             if car.reach_target():
                 car.status = 9
-            elif next_block is False:
-                self.blocks[(car.position+1) % 18] = car.ID
             else:
-                car.status = 0
+                if next_block is False:
+                    self.blocks[(car.position+1) % 18] = car.ID
+                else:
+                    car.status = 0
 
             # Loading
             if car.status == 9:
-                car.addDrop()
-                if car.pickupQueue[0][0] == car.position:
-                    car.add_job(car.pickupQueue[0][1], pickup= False)
-                    car.pickupQueue.pop(0)
-                if car.dropoffQueue[0] == car.position:
-                    car.pickupQueue.pop(0)
+                car.add_drop()
         # calculate route
         pass
 
@@ -120,8 +114,12 @@ class TrafficController:
     def on_message(self, client, userdata, message):
         # print("%s %s" % (message.topic, message.payload))
         print(message)
-        if (message.topic == "User"):
+        if message.topic == "User":
             self.userQueue.append([int(n) for n in message.payload.decode("utf-8").split(",")])
+        if message.topic == "Status":
+            m = message.payload.decode("utf-8")
+            if m[2:] == "finloading":
+                next(car for car in self.cars if car.ID == m[0:2])
 
 
 def main():

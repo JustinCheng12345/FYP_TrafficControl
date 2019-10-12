@@ -29,4 +29,18 @@ class LiftCar:
             self.dropOffQueue.sort(key=lambda x: distance_to_block(self.position, x))
 
     def reach_target(self):
-        return self.position == self.pickupQueue[0][0] or self.position == self.dropOffQueue[0]
+        test = False
+        if len(self.pickupQueue) > 0:
+            test = self.position == self.pickupQueue[0][0]
+        if len(self.dropOffQueue) > 0:
+            test = self.position == self.dropOffQueue[0] or test
+        return test
+
+    def add_drop(self):
+        if len(self.pickupQueue) > 0:
+            if self.pickupQueue[0][0] == self.position:
+                self.add_job(self.pickupQueue[0][1], pickup=False)
+                self.pickupQueue.pop(0)
+        if len(self.dropOffQueue) > 0:
+            if self.dropOffQueue[0] == self.position:
+                self.pickupQueue.pop(0)
