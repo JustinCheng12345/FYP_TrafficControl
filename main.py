@@ -9,10 +9,13 @@ and then to calculate the optimal path for the lift cars. Signals will
 then be sent to different controllers using MQTT or serial communication.
 """
 
-import serial
 import time
-from car import LiftCar
+
 import paho.mqtt.client as mqtt
+import serial
+
+from car import LiftCar
+
 
 class TrafficController:
     def __init__(self):
@@ -26,7 +29,7 @@ class TrafficController:
         self.mqttClient.subscribe("User")
         self.mqttClient.on_message = self.on_message
 
-        self.blocks = [False]*18
+        self.blocks = [False] * 18
         self.sensors = [False] * 36
         self.cars = []
         self.userQueue = []
@@ -37,10 +40,9 @@ class TrafficController:
     def extract(self):
         # to extract sensor data from the Arduino mega  
         self.mega.write(b"se00get\n")
-        tempblocks = [False]*18
-        for trueblock in self.mega.readline().decode("utf-8").split(","):
-            if trueblock:
-                tempblocks[int(trueblock)] = True
+        tempblocks = [False] * 18
+        for trueblock in self.mega.readline().decode("utf-8").split(",")[:-1]:
+            tempblocks[int(trueblock)] = True
         self.blocks = [new if not new else old for old, new in zip(self.blocks, tempblocks)]
         for car in self.cars:
             car.position = self.blocks.index(car.ID)
@@ -57,10 +59,12 @@ class TrafficController:
             # If it is possible to move to next floor
             if car.reach_target():
                 car.status = 9
+            elif car.status == 8:
+                pass
             else:
-                if self.blocks[(car.position+1) % 18] is False:
-                    if self.blocks[(car.position+2) % 18] is False or not (car.position == 16 or car.position == 7):
-                        self.blocks[(car.position+1) % 18] = car.ID
+                if self.blocks[(car.position + 1) % 18] is False:
+                    if self.blocks[(car.position + 2) % 18] is False or not (car.position == 16 or car.position == 7):
+                        self.blocks[(car.position + 1) % 18] = car.ID
                 else:
                     car.status = 0
 
@@ -74,7 +78,7 @@ class TrafficController:
         # to provide signal for each car
         for car in self.cars:
             if car.status == 9:
-                self.mqttClient.publish("Signal", "lc"+car.ID+"load")
+                self.mqttClient.publish("Signal", "lc" + car.ID + "load")
                 car.status = 8
             if self.blocks.count(car.ID) > 1:
                 if (car.position == 0 or car.position == 16) and self.servo[0] is False:
@@ -86,15 +90,15 @@ class TrafficController:
                 elif (car.position == 17) and self.servo[0] is True:
                     # self.mqttClient.publish("Signal", "sclotransfer")
                     self.mega.write(b"sclotransfer\n")
-                elif (car.position == 8) and self.servo[0] is True:
-                    # self.mqttClient.publish("Signal", "sclotransfer")
-                    self.mega.write(b"sclotransfer\n")
+                elif (car.position == 8) and self.servo[9] is True:
+                    # self.mqttClient.publish("Signal", "scuptransfer")
+                    self.mega.write(b"scuptransfer\n")
                 elif car.position < 9:
-                    self.mqttClient.publish("Signal", "lc"+car.ID+"go")
+                    self.mqttClient.publish("Signal", "lc" + car.ID + "go")
                 else:
-                    self.mqttClient.publish("Signal", "lc"+car.ID+"down")
+                    self.mqttClient.publish("Signal", "lc" + car.ID + "down")
             else:
-                self.mqttClient.publish("Signal", "lc"+car.ID+"stop")
+                self.mqttClient.publish("Signal", "lc" + car.ID + "stop")
         pass
 
     def maintenance(self):
@@ -119,7 +123,7 @@ class TrafficController:
         if message.topic == "Status":
             m = message.payload.decode("utf-8")
             if m[2:] == "finloading":
-                next(car for car in self.cars if car.ID == m[0:2])
+                [car for car in self.cars if car.ID == m[0:2]][0].status = 0
 
 
 def main():
@@ -127,7 +131,7 @@ def main():
     # handle serial connection with mega, will reset mega
     tc = TrafficController()
     for i in range(0, int(input("Number of cars?"))):
-        x = input("ID/position of car "+str(i)+" :")
+        x = input("ID/position of car " + str(i) + " :")
         tc.add_car(x[:2], int(x[3:]))
     tc.routine()
 
