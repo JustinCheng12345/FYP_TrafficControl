@@ -39,9 +39,9 @@ class TrafficController:
         self.mega.write(b"se00get\n")
         tempblocks = [False]*18
         for trueblock in self.mega.readline().decode("utf-8").split(","):
-            tempblocks[int(trueblock)] = True
+            if trueblock:
+                tempblocks[int(trueblock)] = True
         self.blocks = [new if not new else old for old, new in zip(self.blocks, tempblocks)]
-        print(self.blocks)
         for car in self.cars:
             car.position = self.blocks.index(car.ID)
 
@@ -49,20 +49,18 @@ class TrafficController:
         # to calculate the optimal path for each lift
         # apply user queue to job queue
         for u in self.userQueue:
-            print(u)
             time_queue = [t.get_waiting_time(u[0], u[1]) for t in self.cars]
             self.cars[time_queue.index(min(time_queue))].add_job(u)
             self.userQueue.remove(u)
 
         for car in self.cars:
-            print(car.pickupQueue)
             # If it is possible to move to next floor
-            next_block = self.blocks[(car.position+1) % 18]
             if car.reach_target():
                 car.status = 9
             else:
-                if next_block is False:
-                    self.blocks[(car.position+1) % 18] = car.ID
+                if self.blocks[(car.position+1) % 18] is False:
+                    if self.blocks[(car.position+2) % 18] is False or not (car.position == 16 or car.position == 7):
+                        self.blocks[(car.position+1) % 18] = car.ID
                 else:
                     car.status = 0
 
@@ -75,6 +73,9 @@ class TrafficController:
     def signal(self):
         # to provide signal for each car
         for car in self.cars:
+            if car.status == 9:
+                self.mqttClient.publish("Signal", "lc"+car.ID+"load")
+                car.status = 8
             if self.blocks.count(car.ID) > 1:
                 if (car.position == 0 or car.position == 16) and self.servo[0] is False:
                     # self.mqttClient.publish("Signal", "sclonormal")
@@ -113,7 +114,6 @@ class TrafficController:
 
     def on_message(self, client, userdata, message):
         # print("%s %s" % (message.topic, message.payload))
-        print(message)
         if message.topic == "User":
             self.userQueue.append([int(n) for n in message.payload.decode("utf-8").split(",")])
         if message.topic == "Status":
