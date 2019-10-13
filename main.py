@@ -70,7 +70,7 @@ class TrafficController:
 
             # Loading
             if car.status == 9:
-                car.add_drop()
+                car.loading()
         # calculate route
         pass
 
@@ -119,7 +119,8 @@ class TrafficController:
     def on_message(self, client, userdata, message):
         # print("%s %s" % (message.topic, message.payload))
         if message.topic == "User":
-            self.userQueue.append([int(n) for n in message.payload.decode("utf-8").split(",")])
+            self.userQueue.append([int(n)-1 for n in message.payload.decode("utf-8").split(",")])
+            # -1 as first floor = floor 0
         if message.topic == "Status":
             m = message.payload.decode("utf-8")
             if m[2:] == "finloading":
