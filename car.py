@@ -25,7 +25,7 @@ class LiftCar:
             self.pickupQueue.sort(key=lambda x: (x[0] + 18 - self.position) % 18)
         else:
             self.dropOffQueue.append(job)
-            self.pickupQueue.sort(key=lambda x: (x + 18 - self.position) % 18)
+            self.dropOffQueue.sort(key=lambda x: (x + 18 - self.position) % 18)
 
     def reach_target(self):
         test = False
