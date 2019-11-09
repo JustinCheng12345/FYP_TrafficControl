@@ -6,7 +6,8 @@ class LiftCar:
         # self.jobQueue = []
         self.ID = car_id
         self.position = position
-        self.status = 0  # -1 Going down/0 Stay/1 Going up/9 Loading
+        self.status = 0
+        # 0 Stay/1 Proceed/2 Waiting/3 Servo operating/8 Loading/9 Reached
         self.blockQueue = []
         self.pickupQueue = []
         self.dropOffQueue = []
@@ -26,6 +27,9 @@ class LiftCar:
         else:
             self.dropOffQueue.append(job)
             self.dropOffQueue.sort(key=lambda x: (x + 18 - self.position) % 18)
+
+    def job_count(self):
+        return len(self.pickupQueue)+len(self.dropOffQueue)
 
     def reach_target(self):
         test = False

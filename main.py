@@ -35,7 +35,7 @@ class TrafficController:
         self.userQueue = []
         self.signalQueue = []
         self.routineControl = False
-        self.servo = [True, True]
+        self.servo = [True, True]  # true when normal
 
     def extract(self):
         # to extract sensor data from the Arduino mega  
@@ -59,18 +59,24 @@ class TrafficController:
             # If it is possible to move to next floor
             if car.reach_target():
                 car.status = 9
-            elif car.status == 8:
+                car.loading()
+            elif car.status == 8 or car.status == 3:
                 pass
             else:
-                if self.blocks[(car.position + 1) % 18] is False:
-                    if self.blocks[(car.position + 2) % 18] is False or not (car.position == 16 or car.position == 7):
+                if car.job_count() > 0:
+                    if self.blocks[(car.position + 1) % 18] is False and\
+                            (self.blocks[(car.position + 2) % 18] is False or
+                             not (car.position == 16 or car.position == 7)):
                         self.blocks[(car.position + 1) % 18] = car.ID
+                        car.status = 1
+                    else:
+                        car.status = 2
+                        if self.blocks[car.position+1]:
+                            previous_car = [x for x in self.cars if x.ID == self.blocks[car.position+1]][0]
+                            if previous_car.status == 0:
+                                previous_car.add_job((previous_car.location + 16) % 18, pickup=False)
                 else:
                     car.status = 0
-
-            # Loading
-            if car.status == 9:
-                car.loading()
         # calculate route
         pass
 
@@ -84,17 +90,25 @@ class TrafficController:
                 if (car.position == 0 or car.position == 16) and self.servo[0] is False:
                     # self.mqttClient.publish("Signal", "sclonormal")
                     self.mega.write(b"sclonormal\n")
-                elif (car.position == 7 or car.position == 9) and self.servo[0] is False:
+                    self.mqttClient.publish("Signal", "lc" + car.ID + "servo")
+                    self.servo[0] = True
+                elif (car.position == 7 or car.position == 9) and self.servo[1] is False:
                     # self.mqttClient.publish("Signal", "scupnormal")
                     self.mega.write(b"scupnormal\n")
+                    self.mqttClient.publish("Signal", "lc" + car.ID + "servo")
+                    self.servo[1] = True
                 elif (car.position == 17) and self.servo[0] is True:
                     # self.mqttClient.publish("Signal", "sclotransfer")
                     self.mega.write(b"sclotransfer\n")
+                    self.mqttClient.publish("Signal", "lc" + car.ID + "servo")
+                    self.servo[0] = False
                 elif (car.position == 8) and self.servo[9] is True:
                     # self.mqttClient.publish("Signal", "scuptransfer")
                     self.mega.write(b"scuptransfer\n")
+                    self.mqttClient.publish("Signal", "lc" + car.ID + "servo")
+                    self.servo[1] = False
                 elif car.position < 9:
-                    self.mqttClient.publish("Signal", "lc" + car.ID + "go")
+                    self.mqttClient.publish("Signal", "lc" + car.ID + "up")
                 else:
                     self.mqttClient.publish("Signal", "lc" + car.ID + "down")
             else:
@@ -124,6 +138,8 @@ class TrafficController:
         if message.topic == "Status":
             m = message.payload.decode("utf-8")
             if m[2:] == "finloading":
+                [car for car in self.cars if car.ID == m[0:2]][0].status = 0
+            if m[2:] == "finservo":
                 [car for car in self.cars if car.ID == m[0:2]][0].status = 0
 
 
