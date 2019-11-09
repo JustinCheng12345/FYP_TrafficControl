@@ -74,7 +74,7 @@ class TrafficController:
                         if self.blocks[car.position+1]:
                             previous_car = [x for x in self.cars if x.ID == self.blocks[car.position+1]][0]
                             if previous_car.status == 0:
-                                previous_car.add_job((previous_car.location + 16) % 18, pickup=False)
+                                previous_car.add_job((previous_car.location + 3) % 18, pickup=False)
                 else:
                     car.status = 0
         # calculate route
